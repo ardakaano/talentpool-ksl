@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { fetchAllTalentPool } from "@/lib/airtable";
 
+export const runtime = "edge";
+
 export async function GET() {
   try {
     const data = await fetchAllTalentPool();

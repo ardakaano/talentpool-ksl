@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+export const runtime = "edge";
+
 const BASE_ID = process.env.AIRTABLE_BASE_ID!;
 const TABLE_ID = process.env.AIRTABLE_TABLE_ID!;
 const PAT = process.env.AIRTABLE_PAT!;

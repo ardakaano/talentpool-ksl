@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { fetchAllTalentPool } from "@/lib/airtable";
 import type { TalentFields } from "@/lib/types";
 
+export const runtime = "edge";
+
 const CONCURRENCY = 5;
 
 async function improveText(text: string): Promise<string | null> {
