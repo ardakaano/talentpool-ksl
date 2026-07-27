@@ -64,6 +64,10 @@ function getField(f: Record<string, unknown>, name: string): string {
 }
 
 export default function Dashboard() {
+  const [authenticated, setAuthenticated] = useState<boolean | null>(null);
+  const [password, setPassword] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
   const [records, setRecords] = useState<TalentRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -159,6 +163,38 @@ export default function Dashboard() {
 
   const hasActiveFilters = search || filterPriority || filterTags.length > 0 || filterGender || filterCity || filterPlatform || filterDelist !== "active";
 
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    setAuthError("");
+    try {
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setAuthenticated(true);
+        sessionStorage.setItem("tp_auth", "1");
+      } else {
+        setAuthError("Yanlış şifre");
+      }
+    } catch {
+      setAuthError("Bağlantı hatası");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (sessionStorage.getItem("tp_auth") === "1") {
+      setAuthenticated(true);
+    } else {
+      setAuthenticated(false);
+    }
+  }, []);
+
   const handleImprove = async (recordId: string) => {
     const record = records.find((r) => r.id === recordId);
     if (!record) return;
@@ -191,6 +227,46 @@ export default function Dashboard() {
       setImprovingId(null);
     }
   };
+
+  if (authenticated === null) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!authenticated) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-[#00174a]/[0.03]">
+        <Card className="w-full max-w-sm mx-4">
+          <CardContent className="p-8">
+            <div className="text-center mb-6">
+              <div className="w-12 h-12 rounded-xl bg-[#00174a] text-white flex items-center justify-center mx-auto mb-3">
+                <Users className="w-6 h-6" />
+              </div>
+              <h1 className="text-xl font-bold text-[#00174a]">TalentPool</h1>
+              <p className="text-sm text-muted-foreground mt-1">Devam etmek için şifreni gir</p>
+            </div>
+            <form onSubmit={handleAuth} className="space-y-4">
+              <Input
+                type="password"
+                placeholder="Şifre"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="h-11 text-sm"
+                autoFocus
+              />
+              {authError && <p className="text-sm text-red-500">{authError}</p>}
+              <Button type="submit" className="w-full h-11 bg-[#00174a] hover:bg-[#00174a]/90" disabled={authLoading}>
+                {authLoading ? "Kontrol ediliyor..." : "Giriş Yap"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
