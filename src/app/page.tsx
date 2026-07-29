@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import type { TalentRecord, TalentFields, AirtableResponse } from "@/lib/types";
+import type { TalentRecord, TalentFields, BrandFields, AirtableResponse } from "@/lib/types";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   RefreshCw, Search, Users, TrendingUp, Star, Tag, MapPin, ShieldAlert, ChevronDown, ChevronUp, Sparkles, Loader2,
-  Mail, Globe, Phone, ExternalLink, FileText, Heart, Briefcase, ShieldOff, Share2,
+  Mail, Globe, Phone, ExternalLink, FileText, Heart, Briefcase, ShieldOff, Share2, Building2,
 } from "lucide-react";
 
 interface Stats {
@@ -86,6 +86,13 @@ export default function Dashboard() {
   const [improvedTexts, setImprovedTexts] = useState<Record<string, string>>({});
   const [improveError, setImproveError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [activeTab, setActiveTab] = useState<"influencer" | "brands">("influencer");
+  const [brands, setBrands] = useState<TalentRecord[]>([]);
+  const [brandsLoading, setBrandsLoading] = useState(false);
+  const [brandSearch, setBrandSearch] = useState("");
+  const [brandFilterSektor, setBrandFilterSektor] = useState<string>("");
+  const [brandFilterDurum, setBrandFilterDurum] = useState<string>("");
+  const [brandFilterOdak, setBrandFilterOdak] = useState<string[]>([]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -111,6 +118,30 @@ export default function Dashboard() {
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, [fetchData, autoRefresh]);
+
+  const fetchBrands = useCallback(async () => {
+    try {
+      setBrandsLoading(true);
+      const res = await fetch("/api/brands");
+      if (!res.ok) throw new Error("API error");
+      const data: AirtableResponse = await res.json();
+      setBrands(data.records);
+    } catch {
+      // silent
+    } finally {
+      setBrandsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "brands") fetchBrands();
+  }, [activeTab, fetchBrands]);
+
+  useEffect(() => {
+    if (!autoRefresh || activeTab !== "brands") return;
+    const interval = setInterval(fetchBrands, 30000);
+    return () => clearInterval(interval);
+  }, [fetchBrands, autoRefresh, activeTab]);
 
   const stats = useMemo(() => computeStats(records), [records]);
   const uniqueTags = useMemo(() => Object.keys(stats.tags).sort(), [stats.tags]);
@@ -162,6 +193,53 @@ export default function Dashboard() {
   };
 
   const hasActiveFilters = search || filterPriority || filterTags.length > 0 || filterGender || filterCity || filterPlatform || filterDelist !== "active";
+
+  const brandSektors = useMemo(() => {
+    const s: Record<string, number> = {};
+    for (const b of brands) {
+      const sektor = (b.fields as BrandFields)["Sektör"];
+      if (sektor) s[sektor] = (s[sektor] || 0) + 1;
+    }
+    return Object.keys(s).sort();
+  }, [brands]);
+
+  const brandOdaks = useMemo(() => {
+    const o: Record<string, number> = {};
+    for (const b of brands) {
+      const odak = (b.fields as BrandFields)["Odak"];
+      if (Array.isArray(odak)) for (const t of odak) o[t] = (o[t] || 0) + 1;
+    }
+    return Object.entries(o).sort((a, b) => b[1] - a[1]);
+  }, [brands]);
+
+  const brandStats = useMemo(() => {
+    let aktif = 0, pasif = 0, anlasma = 0;
+    for (const b of brands) {
+      const durum = (b.fields as BrandFields)["Durum"];
+      if (durum === "Aktif") aktif++;
+      else if (durum === "Pasif") pasif++;
+      else if (durum === "Anlaşma Süreci") anlasma++;
+    }
+    return { total: brands.length, aktif, pasif, anlasma };
+  }, [brands]);
+
+  const filteredBrands = useMemo(() => {
+    return brands.filter((b) => {
+      const f = b.fields as BrandFields;
+      const q = brandSearch.toLowerCase();
+      if (q) {
+        const name = (f["Marka Adı"] || "").toLowerCase();
+        const sektor = (f["Sektör"] || "").toLowerCase();
+        if (!name.includes(q) && !sektor.includes(q)) return false;
+      }
+      if (brandFilterSektor && f["Sektör"] !== brandFilterSektor) return false;
+      if (brandFilterDurum && f["Durum"] !== brandFilterDurum) return false;
+      if (brandFilterOdak.length > 0 && (!Array.isArray(f["Odak"]) || !f["Odak"].some((t) => brandFilterOdak.includes(t)))) return false;
+      return true;
+    });
+  }, [brands, brandSearch, brandFilterSektor, brandFilterDurum, brandFilterOdak]);
+
+  const hasActiveBrandFilters = brandSearch || brandFilterSektor || brandFilterDurum || brandFilterOdak.length > 0;
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -293,7 +371,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-[#00174a]/[0.03]">
       {/* Top Nav */}
-      <header className="bg-[#00174a] text-white px-6 py-4 sticky top-0 z-50 shadow-lg">
+      <header className="bg-[#00174a] text-white px-6 pt-4 pb-0 sticky top-0 z-50 shadow-lg">
         <div className="max-w-[1800px] mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center">
@@ -301,7 +379,7 @@ export default function Dashboard() {
             </div>
             <div>
               <h1 className="text-lg font-bold tracking-tight">TalentPool</h1>
-              <p className="text-xs text-white/60">{stats.total} influencer</p>
+              <p className="text-xs text-white/60">{activeTab === "influencer" ? `${stats.total} influencer` : `${brandStats.total} marka`}</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -315,7 +393,7 @@ export default function Dashboard() {
               </span>
               {autoRefresh ? "Canlı (30sn)" : "Duraklatıldı"}
             </button>
-            <Button variant="ghost" size="sm" onClick={fetchData} className="text-white/80 hover:text-white hover:bg-white/10 gap-2">
+            <Button variant="ghost" size="sm" onClick={() => { if (activeTab === "influencer") fetchData(); else fetchBrands(); }} className="text-white/80 hover:text-white hover:bg-white/10 gap-2">
               <RefreshCw className="w-4 h-4" />
               <span className="hidden sm:inline">Yenile</span>
             </Button>
@@ -326,8 +404,25 @@ export default function Dashboard() {
             )}
           </div>
         </div>
+        <div className="max-w-[1800px] mx-auto flex gap-1 mt-3">
+          <button
+            onClick={() => setActiveTab("influencer")}
+            className={`px-4 py-2.5 text-sm font-medium rounded-t-lg transition ${activeTab === "influencer" ? "bg-white text-[#00174a]" : "text-white/60 hover:text-white hover:bg-white/10"}`}
+          >
+            Influencer
+          </button>
+          <button
+            onClick={() => setActiveTab("brands")}
+            className={`px-4 py-2.5 text-sm font-medium rounded-t-lg transition flex items-center gap-1.5 ${activeTab === "brands" ? "bg-white text-[#00174a]" : "text-white/60 hover:text-white hover:bg-white/10"}`}
+          >
+            <Building2 className="w-3.5 h-3.5" />
+            Markalar
+          </button>
+        </div>
       </header>
 
+      {activeTab === "influencer" && (
+      <>
       <div className="max-w-[1800px] mx-auto p-4 md:p-6 space-y-5">
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -660,6 +755,149 @@ export default function Dashboard() {
           })()}
         </DialogContent>
       </Dialog>
+      </>
+      )}
+
+      {activeTab === "brands" && (
+      <div className="max-w-[1800px] mx-auto p-4 md:p-6 space-y-5">
+        {/* Brand Stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <StatCard label="Toplam" value={brandStats.total} icon={Building2} />
+          <StatCard label="Aktif" value={brandStats.aktif} icon={TrendingUp} variant="success" />
+          <StatCard label="Pasif" value={brandStats.pasif} icon={ShieldAlert} variant="danger" />
+          <StatCard label="Anlaşma Süreci" value={brandStats.anlasma} icon={Star} variant="warning" />
+        </div>
+
+        {/* Brand Filters */}
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Durum:</span>
+              {[
+                { key: "", label: "Tümü", count: brandStats.total },
+                { key: "Aktif", label: "Aktif", count: brandStats.aktif },
+                { key: "Pasif", label: "Pasif", count: brandStats.pasif },
+                { key: "Anlaşma Süreci", label: "Anlaşma", count: brandStats.anlasma },
+              ].map(({ key, label, count }) => (
+                <button
+                  key={key}
+                  onClick={() => setBrandFilterDurum(brandFilterDurum === key ? "" : key)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition border ${brandFilterDurum === key ? (key === "Pasif" ? "bg-red-600 text-white border-red-600" : key === "Aktif" ? "bg-green-600 text-white border-green-600" : key === "Anlaşma Süreci" ? "bg-amber-600 text-white border-amber-600" : "bg-[#00174a] text-white border-[#00174a]") : "bg-white text-muted-foreground border-border hover:border-primary/30"}`}
+                >
+                  {label} ({count})
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Marka veya sektör ara..."
+                  value={brandSearch}
+                  onChange={(e) => setBrandSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+
+              <Select value={brandFilterSektor} onValueChange={(v) => setBrandFilterSektor(v || "")}>
+                <SelectTrigger><SelectValue placeholder="Sektör" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tüm Sektörler</SelectItem>
+                  {brandSektors.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-muted-foreground flex items-center gap-1"><Tag className="w-3 h-3" /> Odak:</span>
+              {brandOdaks.map(([name, count]) => (
+                <button
+                  key={name}
+                  onClick={() => setBrandFilterOdak((prev) => prev.includes(name) ? prev.filter((x) => x !== name) : [...prev, name])}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium transition border ${brandFilterOdak.includes(name) ? "bg-[#00174a] text-white border-[#00174a]" : "bg-white text-muted-foreground border-border hover:border-primary/30"}`}
+                >
+                  {name} ({count})
+                </button>
+              ))}
+            </div>
+
+            {hasActiveBrandFilters && (
+              <Button
+                variant="link"
+                size="sm"
+                className="text-xs p-0 h-auto"
+                onClick={() => { setBrandSearch(""); setBrandFilterSektor(""); setBrandFilterDurum(""); setBrandFilterOdak([]); }}
+              >
+                Filtreleri temizle
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Brand Table */}
+        <Card className="overflow-hidden">
+          <CardHeader className="px-6 py-4 border-b border-border">
+            <CardTitle className="text-base font-semibold flex items-center justify-between">
+              <span>Marka Listesi</span>
+              <Badge variant="secondary" className="text-xs font-normal">
+                {brandsLoading ? "..." : `${filteredBrands.length} / ${brands.length}`}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50 hover:bg-muted/50">
+                  <TableHead className="w-10 text-xs">#</TableHead>
+                  <TableHead className="text-xs">Marka Adı</TableHead>
+                  <TableHead className="text-xs">Sektör</TableHead>
+                  <TableHead className="text-xs">Odak</TableHead>
+                  <TableHead className="text-xs">Durum</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredBrands.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-16 text-muted-foreground">
+                      <div className="flex flex-col items-center gap-2">
+                        <Building2 className="w-8 h-8 opacity-30" />
+                        <p className="text-sm">Sonuç bulunamadı</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredBrands.map((b, i) => {
+                    const f = b.fields as BrandFields;
+                    const durum = f["Durum"];
+                    return (
+                      <TableRow key={b.id} className="transition-colors hover:bg-muted/50">
+                        <TableCell className="text-xs text-muted-foreground w-10">{i + 1}</TableCell>
+                        <TableCell className="font-semibold text-sm">{f["Marka Adı"] || "-"}</TableCell>
+                        <TableCell className="text-xs">{f["Sektör"] || "-"}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-1 flex-wrap">
+                            {(Array.isArray(f["Odak"]) ? f["Odak"] as string[] : []).map((t) => (
+                              <Badge key={t} variant="outline" className="text-[10px] border-primary/20 text-primary">{t}</Badge>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {(() => {
+                            const v: Record<string, "destructive" | "default" | "secondary"> = { Aktif: "default", Pasif: "destructive", "Anlaşma Süreci": "secondary" };
+                            return <Badge variant={durum ? (v[durum] || "default") : "default"} className="text-[10px]">{durum || "-"}</Badge>;
+                          })()}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
+      </div>
+      )}
     </div>
   );
 }

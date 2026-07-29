@@ -34,3 +34,38 @@ export async function fetchAllTalentPool(): Promise<AirtableResponse> {
 
   return { records: allRecords };
 }
+
+const BRANDS_TABLE_ID = process.env.AIRTABLE_BRANDS_TABLE_ID!;
+const BRANDS_VIEW_ID = process.env.AIRTABLE_BRANDS_VIEW_ID!;
+
+export async function fetchAllBrands(): Promise<AirtableResponse> {
+  const allRecords: AirtableResponse["records"] = [];
+  let offset: string | undefined;
+
+  do {
+    const url = new URL(
+      `https://api.airtable.com/v0/${BASE_ID}/${BRANDS_TABLE_ID}`
+    );
+    url.searchParams.set("maxRecords", "200");
+    if (BRANDS_VIEW_ID) url.searchParams.set("view", BRANDS_VIEW_ID);
+    if (offset) url.searchParams.set("offset", offset);
+
+    const res = await fetch(url.toString(), {
+      headers: {
+        Authorization: `Bearer ${PAT}`,
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      throw new Error(`Airtable API error: ${res.status} ${res.statusText}`);
+    }
+
+    const data: AirtableResponse = await res.json();
+    allRecords.push(...data.records);
+    offset = data.offset;
+  } while (offset);
+
+  return { records: allRecords };
+}

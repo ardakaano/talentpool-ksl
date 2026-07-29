@@ -54,3 +54,10 @@ export interface TalentFields {
   "Created 2"?: string;
   "Onay emaili ve iletişim otomasyon"?: boolean;
 }
+
+export interface BrandFields {
+  "Marka Adı"?: string;
+  "Sektör"?: string;
+  "Odak"?: string[];
+  "Durum"?: string;
+}
