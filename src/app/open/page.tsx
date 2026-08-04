@@ -279,6 +279,12 @@ export default function OpenPage() {
           </div>
         </Card>
       </div>
+
+      <footer className="max-w-[1200px] mx-auto px-4 md:px-6 pb-8 pt-2">
+        <p className="text-xs text-muted-foreground text-center">
+          &copy; {new Date().getFullYear()} Kibele. Tüm hakları saklıdır.
+        </p>
+      </footer>
     </div>
   );
 }
