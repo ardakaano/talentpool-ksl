@@ -53,6 +53,7 @@ export interface TalentFields {
   "Created"?: string;
   "Created 2"?: string;
   "Onay emaili ve iletişim otomasyon"?: boolean;
+  "Agency Safe"?: boolean;
 }
 
 export interface BrandFields {
