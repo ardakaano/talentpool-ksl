@@ -1067,15 +1067,13 @@ export default function Dashboard() {
                   <TableHead className="text-xs">Ad</TableHead>
                   <TableHead className="text-xs">Onay</TableHead>
                   <TableHead className="text-xs">Link</TableHead>
-                  <TableHead className="text-xs">Telefon</TableHead>
-                  <TableHead className="text-xs">Email</TableHead>
                   <TableHead className="text-xs">Barter</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {ugc.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-16 text-muted-foreground">
+                    <TableCell colSpan={5} className="text-center py-16 text-muted-foreground">
                       <div className="flex flex-col items-center gap-2">
                         <Clapperboard className="w-8 h-8 opacity-30" />
                         <p className="text-sm">Sonuç bulunamadı</p>
@@ -1089,8 +1087,6 @@ export default function Dashboard() {
                     const account = getField(f, "Portfolyonuz yoksa aktif kullandığınız hesap linki");
                     const link = portfolio !== "-" ? portfolio : account;
                     const onay = getField(f, "Onay");
-                    const phone = getField(f, "Cep telefonu numaranız");
-                    const email = getField(f, "Email adresiniz");
                     return (
                       <TableRow key={r.id} className="transition-colors hover:bg-muted/50">
                         <TableCell className="text-xs text-muted-foreground w-10">{i + 1}</TableCell>
@@ -1110,26 +1106,6 @@ export default function Dashboard() {
                             >
                               <ExternalLink className="w-3 h-3 shrink-0" />
                               <span className="truncate">{link}</span>
-                            </a>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          {phone !== "-" ? (
-                            <a href={`tel:${phone}`} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary hover:underline">
-                              <Phone className="w-3 h-3 shrink-0" />
-                              {phone}
-                            </a>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          {email !== "-" ? (
-                            <a href={`mailto:${email}`} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary hover:underline">
-                              <Mail className="w-3 h-3 shrink-0" />
-                              <span className="truncate max-w-[180px]">{email}</span>
                             </a>
                           ) : (
                             <span className="text-xs text-muted-foreground">-</span>
