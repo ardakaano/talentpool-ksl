@@ -1069,14 +1069,13 @@ export default function Dashboard() {
                   <TableHead className="text-xs">Link</TableHead>
                   <TableHead className="text-xs">Telefon</TableHead>
                   <TableHead className="text-xs">Email</TableHead>
-                  <TableHead className="text-xs">Ücret/İçerik</TableHead>
                   <TableHead className="text-xs">Barter</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {ugc.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-16 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-16 text-muted-foreground">
                       <div className="flex flex-col items-center gap-2">
                         <Clapperboard className="w-8 h-8 opacity-30" />
                         <p className="text-sm">Sonuç bulunamadı</p>
@@ -1092,7 +1091,6 @@ export default function Dashboard() {
                     const onay = getField(f, "Onay");
                     const phone = getField(f, "Cep telefonu numaranız");
                     const email = getField(f, "Email adresiniz");
-                    const fee = getField(f, "İçerik başı ortalama ücretlendirmeniz");
                     return (
                       <TableRow key={r.id} className="transition-colors hover:bg-muted/50">
                         <TableCell className="text-xs text-muted-foreground w-10">{i + 1}</TableCell>
@@ -1136,9 +1134,6 @@ export default function Dashboard() {
                           ) : (
                             <span className="text-xs text-muted-foreground">-</span>
                           )}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap text-sm font-medium">
-                          {fee !== "-" ? `₺${fee}` : "-"}
                         </TableCell>
                         <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                           {getField(f, "Barter kampanyalara açık mısınız?")}
