@@ -5,6 +5,14 @@ const TABLE_ID = process.env.AIRTABLE_TABLE_ID!;
 const PAT = process.env.AIRTABLE_PAT!;
 
 export async function fetchAllTalentPool(): Promise<AirtableResponse> {
+  return fetchTalentTable();
+}
+
+export async function fetchAgencySafe(): Promise<AirtableResponse> {
+  return fetchTalentTable(process.env.AIRTABLE_AGENCY_SAFE_VIEW_ID);
+}
+
+async function fetchTalentTable(viewId?: string): Promise<AirtableResponse> {
   const allRecords: AirtableResponse["records"] = [];
   let offset: string | undefined;
 
@@ -13,6 +21,7 @@ export async function fetchAllTalentPool(): Promise<AirtableResponse> {
       `https://api.airtable.com/v0/${BASE_ID}/${TABLE_ID}`
     );
     url.searchParams.set("maxRecords", "200");
+    if (viewId) url.searchParams.set("view", viewId);
     if (offset) url.searchParams.set("offset", offset);
 
     const res = await fetch(url.toString(), {

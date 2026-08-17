@@ -16,7 +16,7 @@ import {
   Dialog, DialogContent, DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  RefreshCw, Search, Users, TrendingUp, Star, Tag, MapPin, ShieldAlert, ChevronDown, ChevronUp, Sparkles, Loader2,
+  RefreshCw, Search, Users, TrendingUp, Star, Tag, MapPin, ShieldAlert, ShieldCheck, ChevronDown, ChevronUp, Sparkles, Loader2,
   Mail, Globe, Phone, ExternalLink, FileText, Heart, Briefcase, ShieldOff, Share2, Building2,
 } from "lucide-react";
 
@@ -86,13 +86,15 @@ export default function Dashboard() {
   const [improvedTexts, setImprovedTexts] = useState<Record<string, string>>({});
   const [improveError, setImproveError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [activeTab, setActiveTab] = useState<"influencer" | "brands">("influencer");
+  const [activeTab, setActiveTab] = useState<"influencer" | "brands" | "agencySafe">("influencer");
   const [brands, setBrands] = useState<TalentRecord[]>([]);
   const [brandsLoading, setBrandsLoading] = useState(false);
   const [brandSearch, setBrandSearch] = useState("");
   const [brandFilterSektor, setBrandFilterSektor] = useState<string>("");
   const [brandFilterDurum, setBrandFilterDurum] = useState<string>("");
   const [brandFilterOdak, setBrandFilterOdak] = useState<string[]>([]);
+  const [agencySafe, setAgencySafe] = useState<TalentRecord[]>([]);
+  const [agencySafeLoading, setAgencySafeLoading] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -143,7 +145,25 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, [fetchBrands, autoRefresh, activeTab]);
 
-  const stats = useMemo(() => computeStats(records), [records]);
+  const fetchAgencySafe = useCallback(async () => {
+    try {
+      setAgencySafeLoading(true);
+      const res = await fetch("/api/agency-safe");
+      if (!res.ok) throw new Error("API error");
+      const data: AirtableResponse = await res.json();
+      setAgencySafe(data.records);
+    } catch {
+      // silent
+    } finally {
+      setAgencySafeLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!autoRefresh || activeTab !== "agencySafe") return;
+    const interval = setInterval(fetchAgencySafe, 30000);
+    return () => clearInterval(interval);
+  }, [fetchAgencySafe, autoRefresh, activeTab]);  const stats = useMemo(() => computeStats(records), [records]);
   const uniqueTags = useMemo(() => Object.keys(stats.tags).sort(), [stats.tags]);
   const uniquePlatforms = useMemo(() => Object.keys(stats.platforms).sort(), [stats.platforms]);
   const uniqueCities = useMemo(() => Object.keys(stats.cities).sort(), [stats.cities]);
@@ -379,7 +399,7 @@ export default function Dashboard() {
             </div>
             <div>
               <h1 className="text-lg font-bold tracking-tight">TalentPool</h1>
-              <p className="text-xs text-white/60">{activeTab === "influencer" ? `${stats.total} influencer` : `${brandStats.total} marka`}</p>
+              <p className="text-xs text-white/60">{activeTab === "influencer" ? `${stats.total} influencer` : activeTab === "brands" ? `${brandStats.total} marka` : `${agencySafe.length} agency safe`}</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -393,7 +413,7 @@ export default function Dashboard() {
               </span>
               {autoRefresh ? "Canlı (30sn)" : "Duraklatıldı"}
             </button>
-            <Button variant="ghost" size="sm" onClick={() => { if (activeTab === "influencer") fetchData(); else fetchBrands(); }} className="text-white/80 hover:text-white hover:bg-white/10 gap-2">
+            <Button variant="ghost" size="sm" onClick={() => { if (activeTab === "influencer") fetchData(); else if (activeTab === "brands") fetchBrands(); else fetchAgencySafe(); }} className="text-white/80 hover:text-white hover:bg-white/10 gap-2">
               <RefreshCw className="w-4 h-4" />
               <span className="hidden sm:inline">Yenile</span>
             </Button>
@@ -417,6 +437,13 @@ export default function Dashboard() {
           >
             <Building2 className="w-3.5 h-3.5" />
             Markalar
+          </button>
+          <button
+            onClick={() => { setActiveTab("agencySafe"); fetchAgencySafe(); }}
+            className={`px-4 py-2.5 text-sm font-medium rounded-t-lg transition flex items-center gap-1.5 ${activeTab === "agencySafe" ? "bg-white text-[#00174a]" : "text-white/60 hover:text-white hover:bg-white/10"}`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            Agency Safe
           </button>
         </div>
       </header>
@@ -887,6 +914,92 @@ export default function Dashboard() {
                             const v: Record<string, "destructive" | "default" | "secondary"> = { Aktif: "default", Pasif: "destructive", "Anlaşma Süreci": "secondary" };
                             return <Badge variant={durum ? (v[durum] || "default") : "default"} className="text-[10px]">{durum || "-"}</Badge>;
                           })()}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
+      </div>
+      )}
+
+      {activeTab === "agencySafe" && (
+      <div className="max-w-[1800px] mx-auto p-4 md:p-6 space-y-5">
+        {/* Agency Safe Table */}
+        <Card className="overflow-hidden">
+          <CardHeader className="px-6 py-4 border-b border-border">
+            <CardTitle className="text-base font-semibold flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                Agency Safe Listesi
+              </span>
+              <Badge variant="secondary" className="text-xs font-normal">
+                {agencySafeLoading ? "..." : agencySafe.length}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50 hover:bg-muted/50">
+                  <TableHead className="w-10 text-xs">#</TableHead>
+                  <TableHead className="text-xs">Ad</TableHead>
+                  <TableHead className="text-xs">Tag</TableHead>
+                  <TableHead className="text-xs">Link</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {agencySafe.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-16 text-muted-foreground">
+                      <div className="flex flex-col items-center gap-2">
+                        <ShieldCheck className="w-8 h-8 opacity-30" />
+                        <p className="text-sm">Sonuç bulunamadı</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  agencySafe.map((r, i) => {
+                    const f = r.fields as Record<string, unknown>;
+                    const link = getField(f, "Ana mecradaki hesabınız");
+                    return (
+                      <TableRow
+                        key={r.id}
+                        className="cursor-pointer transition-colors hover:bg-muted/50"
+                        onClick={() => setDetailRecord(r)}
+                      >
+                        <TableCell className="text-xs text-muted-foreground w-10">{i + 1}</TableCell>
+                        <TableCell className="font-semibold text-sm whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                            <span className="truncate max-w-[200px]">{getField(f, "Ad-Soyad")}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            {(Array.isArray(f["Tag"]) ? f["Tag"] as string[] : []).map((t) => (
+                              <Badge key={t} variant="outline" className="text-[10px] border-primary/20 text-primary">{t}</Badge>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          {link !== "-" ? (
+                            <a
+                              href={link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline max-w-[240px] truncate"
+                            >
+                              <ExternalLink className="w-3 h-3 shrink-0" />
+                              <span className="truncate">{link}</span>
+                            </a>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
                         </TableCell>
                       </TableRow>
                     );
