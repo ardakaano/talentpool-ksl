@@ -44,19 +44,16 @@ async function fetchTalentTable(viewId?: string): Promise<AirtableResponse> {
   return { records: allRecords };
 }
 
-const BRANDS_TABLE_ID = process.env.AIRTABLE_BRANDS_TABLE_ID!;
-const BRANDS_VIEW_ID = process.env.AIRTABLE_BRANDS_VIEW_ID!;
-
-export async function fetchAllBrands(): Promise<AirtableResponse> {
+async function fetchAirtableTable(tableId: string, viewId?: string): Promise<AirtableResponse> {
   const allRecords: AirtableResponse["records"] = [];
   let offset: string | undefined;
 
   do {
     const url = new URL(
-      `https://api.airtable.com/v0/${BASE_ID}/${BRANDS_TABLE_ID}`
+      `https://api.airtable.com/v0/${BASE_ID}/${tableId}`
     );
     url.searchParams.set("maxRecords", "200");
-    if (BRANDS_VIEW_ID) url.searchParams.set("view", BRANDS_VIEW_ID);
+    if (viewId) url.searchParams.set("view", viewId);
     if (offset) url.searchParams.set("offset", offset);
 
     const res = await fetch(url.toString(), {
@@ -77,4 +74,17 @@ export async function fetchAllBrands(): Promise<AirtableResponse> {
   } while (offset);
 
   return { records: allRecords };
+}
+
+const BRANDS_TABLE_ID = process.env.AIRTABLE_BRANDS_TABLE_ID!;
+const BRANDS_VIEW_ID = process.env.AIRTABLE_BRANDS_VIEW_ID!;
+const UGC_TABLE_ID = process.env.AIRTABLE_UGC_TABLE_ID!;
+const UGC_VIEW_ID = process.env.AIRTABLE_UGC_VIEW_ID;
+
+export async function fetchAllBrands(): Promise<AirtableResponse> {
+  return fetchAirtableTable(BRANDS_TABLE_ID, BRANDS_VIEW_ID);
+}
+
+export async function fetchUgc(): Promise<AirtableResponse> {
+  return fetchAirtableTable(UGC_TABLE_ID, UGC_VIEW_ID);
 }
